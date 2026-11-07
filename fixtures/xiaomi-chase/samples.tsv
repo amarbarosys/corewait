@@ -1,0 +1,7 @@
+cycles	cwprobe-xiaomi	8028	4000000
+cycles	cwprobe-xiaomi	8030	1429000000
+cycles	cwprobe-xiaomi	8260	26000000
+cycles	cwprobe-xiaomi	8268	16000000
+mem	cwprobe-xiaomi	8030	1157000000
+mem	cwprobe-xiaomi	8260	6000000
+mem	cwprobe-xiaomi	8268	2000000

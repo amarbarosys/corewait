@@ -1,0 +1,7 @@
+run: cycles 1823109832 ipc 0.11 | frontend 0.7% backend 97.1% backend-mem 77.5% retiring 2.1% (ARM STALL_FRONTEND, STALL_BACKEND, STALL_BACKEND_MEM over cycles; retiring = the rest)
+fn  97.2%  cwprobe::chase_k
+fn   2.8%  cwprobe::fill_k
+    addr   cyc%       cycles         mem        fe        br  cause  instruction
+    8028  97.2%   1433000000  1157000000         0         0  mem    ldr x1, [x0, x1, lsl #3]
+    8260   1.8%     26000000     6000000         0         0  busy   and x11, x9, x8
+    8268   1.1%     16000000     2000000         0         0  dep    add x9, x9, x10

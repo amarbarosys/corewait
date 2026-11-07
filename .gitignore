@@ -1,0 +1,5 @@
+.work/
+build/
+*.data
+.pixi/
+.claude/

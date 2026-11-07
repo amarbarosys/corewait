@@ -1,0 +1,16 @@
+run: cycles 1667184531 ipc 2.62 | frontend 7.6% backend 55.1% backend-mem 0.7% retiring 37.3% (ARM STALL_FRONTEND, STALL_BACKEND, STALL_BACKEND_MEM over cycles; retiring = the rest)
+fn  87.6%  cwprobe::stream_k
+fn  12.4%  cwprobe::fill_k
+    addr   cyc%       cycles         mem        fe        br  cause  instruction
+    80d4  13.6%    221000000   176000000   3000000         0  mem    ldp q26, q27, [x8]
+    80bc  13.5%    219000000   162000000   5000000         0  mem    ldp q24, q25, [x8, #-0x40]
+    80a4  12.3%    199000000   147000000   5000000         0  mem    ldp q26, q27, [x8, #-0x80]
+    80b0   9.4%    152000000   130000000   2000000         0  mem    ldp q27, q26, [x8, #-0x20]
+    80ec   9.2%    149000000    97000000   2000000         0  mem    ldp q25, q27, [x8, #0x40]
+    80cc   7.0%    114000000   116000000   3000000         0  mem    ldp q24, q25, [x8, #0x20]
+    80e4   6.7%    108000000    69000000   2000000         0  mem    ldp q24, q26, [x8, #0x60]
+    8298   4.3%     70000000     4000000         0         0  dep    subs x1, x1, #0x1
+    80a0   3.5%     57000000    29000000   3000000         0  mem    ldp q25, q24, [x8, #-0x60]
+    8104   2.7%     44000000    19000000   4000000         0  mem    add x8, x8, #0x100
+    8114   2.3%     37000000    47000000   4000000         0  mem    b.lt 0x80a0 <cwprobe::stream_k(::Pointer[True, `0 MutUntrack
+    8288   2.3%     37000000     2000000         0         0  dep    eor x8, x8, x8, lsl #13

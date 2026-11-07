@@ -1,0 +1,14 @@
+0000000000008190 <cwprobe::fmachain_k(::SIMD[DType.float64, 1],::SIMD[DType.int, 1])>:
+    8190:      	cmp	x0, #0x1
+    8194:      	b.lt	0x81b4 <cwprobe::fmachain_k(::SIMD[DType.float64, 1],::SIMD[DType.int, 1])+0x24>
+    8198:      	adrp	x8, 0x0 <write>
+    819c:      	ldr	d1, [x8, #0x978]
+    81a0:      	adrp	x8, 0x0 <write>
+    81a4:      	ldr	d2, [x8, #0x970]
+    81a8:      	fmadd	d0, d0, d1, d2
+    81ac:      	subs	x0, x0, #0x1
+    81b0:      	b.ne	0x81a8 <cwprobe::fmachain_k(::SIMD[DType.float64, 1],::SIMD[DType.int, 1])+0x18>
+    81b4:      	ret
+    81b8:      	nop
+    81bc:      	nop
+

@@ -1,0 +1,116 @@
+0000000000008040 <cwprobe::stream_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1])>:
+    8040:      	movi	v0.2d, #0000000000000000
+    8044:      	movi	v3.2d, #0000000000000000
+    8048:      	cmp	x1, #0x1
+    804c:      	b.lt	0x814c <cwprobe::stream_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1])+0x10c>
+    8050:      	add	x8, x0, #0x80
+    8054:      	movi	v4.2d, #0000000000000000
+    8058:      	movi	v1.2d, #0000000000000000
+    805c:      	mov	x9, #0x7fffffffffffffe0 // =9223372036854775776
+    8060:      	movi	v2.2d, #0000000000000000
+    8064:      	movi	v7.2d, #0000000000000000
+    8068:      	mov	w10, #0x20              // =32
+    806c:      	movi	v16.2d, #0000000000000000
+    8070:      	movi	v6.2d, #0000000000000000
+    8074:      	movi	v5.2d, #0000000000000000
+    8078:      	movi	v17.2d, #0000000000000000
+    807c:      	movi	v18.2d, #0000000000000000
+    8080:      	movi	v19.2d, #0000000000000000
+    8084:      	movi	v20.2d, #0000000000000000
+    8088:      	movi	v21.2d, #0000000000000000
+    808c:      	movi	v22.2d, #0000000000000000
+    8090:      	movi	v23.2d, #0000000000000000
+    8094:      	nop
+    8098:      	nop
+    809c:      	nop
+    80a0:      	ldp	q25, q24, [x8, #-0x60]
+    80a4:      	ldp	q26, q27, [x8, #-0x80]
+    80a8:      	add	v0.2d, v27.2d, v0.2d
+    80ac:      	add	v21.2d, v26.2d, v21.2d
+    80b0:      	ldp	q27, q26, [x8, #-0x20]
+    80b4:      	add	v22.2d, v25.2d, v22.2d
+    80b8:      	add	v23.2d, v24.2d, v23.2d
+    80bc:      	ldp	q24, q25, [x8, #-0x40]
+    80c0:      	add	v18.2d, v25.2d, v18.2d
+    80c4:      	add	v17.2d, v24.2d, v17.2d
+    80c8:      	add	v19.2d, v27.2d, v19.2d
+    80cc:      	ldp	q24, q25, [x8, #0x20]
+    80d0:      	add	v20.2d, v26.2d, v20.2d
+    80d4:      	ldp	q26, q27, [x8]
+    80d8:      	add	v16.2d, v27.2d, v16.2d
+    80dc:      	add	v7.2d, v26.2d, v7.2d
+    80e0:      	add	v6.2d, v24.2d, v6.2d
+    80e4:      	ldp	q24, q26, [x8, #0x60]
+    80e8:      	add	v5.2d, v25.2d, v5.2d
+    80ec:      	ldp	q25, q27, [x8, #0x40]
+    80f0:      	add	v4.2d, v27.2d, v4.2d
+    80f4:      	add	v3.2d, v25.2d, v3.2d
+    80f8:      	add	v1.2d, v24.2d, v1.2d
+    80fc:      	add	v2.2d, v26.2d, v2.2d
+    8100:      	cbz	x9, 0x8118 <cwprobe::stream_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1])+0xd8>
+    8104:      	add	x8, x8, #0x100
+    8108:      	cmp	x10, x1
+    810c:      	add	x10, x10, #0x20
+    8110:      	sub	x9, x9, #0x20
+    8114:      	b.lt	0x80a0 <cwprobe::stream_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1])+0x60>
+    8118:      	add	v17.2d, v17.2d, v21.2d
+    811c:      	add	v18.2d, v18.2d, v0.2d
+    8120:      	add	v19.2d, v19.2d, v22.2d
+    8124:      	add	v20.2d, v20.2d, v23.2d
+    8128:      	add	v0.2d, v7.2d, v3.2d
+    812c:      	add	v0.2d, v17.2d, v0.2d
+    8130:      	add	v3.2d, v16.2d, v4.2d
+    8134:      	add	v3.2d, v18.2d, v3.2d
+    8138:      	add	v1.2d, v6.2d, v1.2d
+    813c:      	add	v1.2d, v19.2d, v1.2d
+    8140:      	add	v2.2d, v5.2d, v2.2d
+    8144:      	add	v2.2d, v20.2d, v2.2d
+    8148:      	b	0x8154 <cwprobe::stream_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1])+0x114>
+    814c:      	movi	v1.2d, #0000000000000000
+    8150:      	movi	v2.2d, #0000000000000000
+    8154:      	add	v4.2d, v0.2d, v1.2d
+    8158:      	add	v5.2d, v3.2d, v2.2d
+    815c:      	add	v4.2d, v4.2d, v5.2d
+    8160:      	zip1	v0.2d, v0.2d, v3.2d
+    8164:      	zip1	v1.2d, v1.2d, v2.2d
+    8168:      	add	v0.2d, v0.2d, v1.2d
+    816c:      	addp	d0, v0.2d
+    8170:      	fmov	x8, d0
+    8174:      	mov	x9, v4.d[1]
+    8178:      	add	x0, x8, x9
+    817c:      	ret
+
+0000000000008230 <cwprobe::fill_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1],::Bool)>:
+    8230:      	subs	x8, x1, #0x1
+    8234:      	b.lt	0x82a0 <cwprobe::fill_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1],::Bool)+0x70>
+    8238:      	tbz	w2, #0x0, 0x8278 <cwprobe::fill_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1],::Bool)+0x48>
+    823c:      	mov	x9, #0x814f             // =33103
+    8240:      	movk	x9, #0xf767, lsl #16
+    8244:      	movk	x9, #0x7b7e, lsl #32
+    8248:      	movk	x9, #0x1405, lsl #48
+    824c:      	mov	x10, #0x7f2d            // =32557
+    8250:      	movk	x10, #0x4c95, lsl #16
+    8254:      	movk	x10, #0xf42d, lsl #32
+    8258:      	movk	x10, #0x5851, lsl #48
+    825c:      	nop
+    8260:      	and	x11, x9, x8
+    8264:      	str	x11, [x0], #0x8
+    8268:      	add	x9, x9, x10
+    826c:      	subs	x1, x1, #0x1
+    8270:      	b.ne	0x8260 <cwprobe::fill_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1],::Bool)+0x30>
+    8274:      	b	0x82a0 <cwprobe::fill_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1],::Bool)+0x70>
+    8278:      	mov	x8, #0x7a44             // =31300
+    827c:      	movk	x8, #0xcbbf, lsl #16
+    8280:      	movk	x8, #0x408d, lsl #32
+    8284:      	movk	x8, #0x139, lsl #48
+    8288:      	eor	x8, x8, x8, lsl #13
+    828c:      	eor	x8, x8, x8, lsr #7
+    8290:      	eor	x8, x8, x8, lsl #17
+    8294:      	str	x8, [x0], #0x8
+    8298:      	subs	x1, x1, #0x1
+    829c:      	b.ne	0x8288 <cwprobe::fill_k(::Pointer[True, `0 MutUntrackedOrigin, ::SIMD[DType.uint64, 1], ::Origin[True, `0](), AddressSpace.GENERIC],::SIMD[DType.int, 1],::Bool)+0x58>
+    82a0:      	ret
+    82a4:      	nop
+    82a8:      	nop
+    82ac:      	nop
+
