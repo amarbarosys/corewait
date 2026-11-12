@@ -493,7 +493,21 @@ def sol_line(an: Analysis, sel: List[Bool], bytes_: Int, bw: Float64) -> String:
     return "sol: " + String(bytes_) + " bytes in " + String(Int(secs * 1000.0 + 0.5)) + " ms = " + f1(gbs) + " GB/s, " + f1(100.0 * gbs / bw) + "% of the device's " + f1(bw) + " GB/s"
 
 
-def show(an: Analysis, func: String, top: Int, causes: Bool, bytes_: Int, bw: Float64) raises:
+def energy_line(an: Analysis, hashes: Int) -> String:
+    """Package energy (RAPL) over the sampled run: J, average W, and J per hash with --hashes N. Whole package:
+    every process on the CPU in that window counts, so a busy box inflates it."""
+    var uj = an.stat("energy_uj")
+    var us = an.stat("wall_us")
+    if uj < 0 or us <= 0:
+        return ""
+    var j = Float64(uj) / 1e6
+    var line = "energy: " + f1(j) + " J package in " + f1(Float64(us) / 1e6) + " s = " + f1(j / (Float64(us) / 1e6)) + " W avg"
+    if hashes > 0:
+        line += ", " + String(j / Float64(hashes) * 1000.0) + " mJ/hash (" + String(hashes) + " hashes)"
+    return line
+
+
+def show(an: Analysis, func: String, top: Int, causes: Bool, bytes_: Int, bw: Float64, hashes: Int = 0) raises:
     var sel = select(an, func)
     var by_cause = cause_cycles(an, sel)
     var total = by_cause[NC]
@@ -505,6 +519,9 @@ def show(an: Analysis, func: String, top: Int, causes: Bool, bytes_: Int, bw: Fl
     print(summary(an))
     if bytes_ > 0 and bw > 0.0:
         print(sol_line(an, sel, bytes_, bw))
+    var el = energy_line(an, hashes)
+    if el.byte_length() > 0:
+        print(el)
     if causes:
         print(rpad("cause", 8) + lpad("cycles", 14) + lpad("share", 8))
         for c in range(NC):
@@ -822,6 +839,7 @@ def main() raises:
     var causes = False
     var bytes_ = 0
     var bw = 0.0
+    var hashes = 0
     var func = String("")
     var pos = List[String]()
     var i = 2
@@ -851,6 +869,11 @@ def main() raises:
                 fail("usage", "--bw needs a value")
             bw = Float64(String(args[i + 1]))
             i += 1
+        elif args[i] == "--hashes":
+            if i + 1 >= len(args):
+                fail("usage", "--hashes needs a value")
+            hashes = Int(String(args[i + 1]))
+            i += 1
         elif args[i] == "--causes":
             causes = True
         else:
@@ -858,7 +881,7 @@ def main() raises:
         i += 1
     var cmd = String(args[1]) if len(args) > 1 else String("")
     if cmd == "show" and len(pos) >= 1:
-        show(analyze(pos[0], k), func, top, causes, bytes_, bw)
+        show(analyze(pos[0], k), func, top, causes, bytes_, bw, hashes)
     elif cmd == "diff" and len(pos) >= 2:
         diff(analyze(pos[0], k), analyze(pos[1], k), top)
     elif cmd == "budget" and len(pos) == 2:

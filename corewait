@@ -3,6 +3,7 @@
 #   --dso reports one loaded library of a host process (auto: the one with the most cycles; a non-ELF BINARY implies it), OUT/dsos.tsv ranks them all
 #   --no-stat skips the second run of the program; --pid samples a running process while BINARY (`sleep 60`) runs, implies --dso auto --no-stat. perf devices only
 # corewait pick OUT LIB|auto                    report another library of OUT/perf.data, without a new run
+# corewait show OUT [--hashes N]  (local perf records: package energy from RAPL powercap -> J, W, mJ/hash line)
 # corewait show OUT [BINARY] | diff OUT_A OUT_B [BIN_A BIN_B] | budget OUT FILE      the Mojo analyzer (build/corewait-an), src/corewait.mojo
 # corewait bw DEV                               sequential-read GB/s with 1, 2, 4 and all concurrent cwprobe stream processes
 # corewait merge OUT DIR...                     add repeated recordings of one binary into OUT
@@ -172,8 +173,14 @@ record_perf() {
         IFS="|" read -r role e p <<<"$spec"; p=$((p / ${CW_DIV:-1}))
         if [ "${e#*=}" = "$e" ]; then ev="$ev -e '$e/period=$p,name=$role/u'"; else ev="$ev -e 'cpu/$e,period=$p,name=$role/u'"; fi
     done
+    local e0 t0 e1 t1 rapl=/sys/class/powercap/intel-rapl:0/energy_uj
+    [ "$how" = local ] && [ -r $rapl ] && { e0=$(cat $rapl); t0=$(date +%s%6N); }
     dsh "$how" "$target" "perf record -q -o $rwd/perf.data $ev ${pid:+-p $pid} -- $cmd" > "$out/run.txt" 2>&1 \
         || fail record "perf record: $(tail -3 "$out/run.txt")"
+    if [ -n "${e0:-}" ]; then  # package energy over the sampled run (counter wraps at max_energy_range_uj)
+        e1=$(cat $rapl); t1=$(date +%s%6N); [ "$e1" -ge "$e0" ] || e1=$((e1 + $(cat ${rapl%/*}/max_energy_range_uj)))
+        printf "energy_uj\t%s\nwall_us\t%s\n" $((e1 - e0)) $((t1 - t0)) > "$out/energy.tsv"
+    fi
     read -r w tbl <<<"$(stat_events "$dev")"
     dsh "$how" "$target" "rm -f $rwd/stat.raw; touch $rwd/stat.raw"   # one perf stat pass per ";" group: more events than counters would multiplex and skew the shares
     [ -n "$nostat" ] || for spec in $tbl ";"; do
@@ -182,6 +189,8 @@ record_perf() {
     done
     [ "$how" = local ] || get "$how" "$target" "$DWD" "$out" perf.data stat.raw
     stat_tsv "$dev" "$out" 3
+    [ -f "$out/energy.tsv" ] && cat "$out/energy.tsv" >> "$out/stat.tsv"
+    return 0
 }
 
 # OUT/dsos.tsv: percent TAB cycles TAB path, hottest first, from OUT/perf.data
