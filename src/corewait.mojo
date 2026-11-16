@@ -598,7 +598,7 @@ def gui(an: Analysis, path: String, func: String, top: Int, hashes: Int) raises:
     u.set_theme(amarbaro())
     var ctx = DeviceContext()
     var layer = Layer(ctx, u)
-    var win = Window("corewait " + path, UW, UH, UW, UH)
+    var win = Window("corewait " + path, UW, UH, UW, UH, app_id="corewait")
     var bg = List[UInt32](length=UW * UH, fill=u.theme.panel)
     var colors = List[UInt32]()  # by cause: mem, fe, dep, branch, busy
     for c in [u.theme.warn, u.theme.accent, u.theme.bad, u.theme.good, u.theme.muted]:
