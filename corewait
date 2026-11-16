@@ -13,7 +13,7 @@
 # samples.tsv: event TAB dso TAB vaddr TAB count   event in cycles|mem|fe|br, vaddr as objdump prints it, count in raw events
 # stat.tsv:    name TAB count                      cycles instructions slots fe be be_mem ret bad time_us (slots = issue slots, or cycles), note, p_ROLE
 set -euo pipefail
-here=$(cd "$(dirname "$0")" && pwd)
+here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)  # resolve the iTools symlink: build/ and pixi.toml live in the repo
 fail() { echo "FAIL $1: $2" >&2; exit 1; }
 # mojo build opens the GPU even for CPU code: queue it behind gpu-wait when that is installed
 GW=""; command -v gpu-wait > /dev/null && GW="gpu-wait run --shared --vram 1 --timeout 600 --"
