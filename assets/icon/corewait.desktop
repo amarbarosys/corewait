@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Corewait
+Exec=corewait --gui
+Icon=corewait
+StartupWMClass=corewait
+Categories=Development;
