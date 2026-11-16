@@ -1,4 +1,5 @@
-# corewait show OUT [--top N] [--causes] [--fn SYMBOL] [--k K] [--bytes B --bw GBPS]   diff OUT_A OUT_B [--top N]   budget OUT FILE
+# corewait show OUT [--top N] [--causes] [--fn SYMBOL] [--k K] [--bytes B --bw GBPS] [--gui]   diff OUT_A OUT_B [--top N]   budget OUT FILE
+#   --gui: the same tables in an imkit window (needs a GPU and -I ../mojo-imkit/src at build); close the window to exit.
 # Joins OUT/samples.tsv to OUT/objdump.txt by address: one row per instruction, with a cause on each row.
 #   skid rule: a sample lands up to K instructions after its cause, so the cycles and memory (or branch-miss) events of a
 #   row go to the nearest preceding load (branch) in the same function; --k 0 turns the rule off.
@@ -8,8 +9,19 @@ from std.collections import Dict
 from std.os import getenv, stat
 from std.os.path import exists
 from std.sys import argv, exit
+from max.gpu.host import DeviceContext
+from imkit.draw import UW, UH
+from imkit.font import Font
+from imkit.layer import Layer
+from imkit.theme import amarbaro
+from imkit.ui import Ui
+from imkit.window import Window
 
 comptime NC = 5
+comptime HALF = UW // 2
+comptime FW = Float32(UW)
+comptime FH = Float32(UH)
+comptime FHALF = Float32(HALF)
 comptime MIN_SAMPLES = 10  # fewer samples of an event on a row are noise: no cause, no skid
 comptime ROW_CAP = 4096  # an instruction line is kept to its first bytes: a branch row names its target's whole mangled symbol (1.4 MB each)
 comptime ALIGN_CELLS = 40000000  # diff: a function pair above this many cells is aligned in linear memory (CW_ALIGN_CELLS overrides)
@@ -507,6 +519,19 @@ def energy_line(an: Analysis, hashes: Int) -> String:
     return line
 
 
+def hot(an: Analysis, sel: List[Bool], top: Int) -> List[Int]:
+    """The rows of the selected functions with cycles, hottest first, at most top."""
+    var keys = List[UInt128]()  # 128 bits: a row past 2^39 cycles overflowed a 64-bit key and sorted last
+    for r in range(len(an.ins)):
+        if sel[an.ins[r].func] and an.ins[r].cyc > 0:
+            keys.append(rank(an.ins[r].cyc, r))
+    sort(keys)
+    var rows = List[Int]()
+    for i in range(min(top, len(keys))):
+        rows.append(unrank(keys[len(keys) - 1 - i]))
+    return rows^
+
+
 def show(an: Analysis, func: String, top: Int, causes: Bool, bytes_: Int, bw: Float64, hashes: Int = 0) raises:
     var sel = select(an, func)
     var by_cause = cause_cycles(an, sel)
@@ -531,19 +556,84 @@ def show(an: Analysis, func: String, top: Int, causes: Bool, bytes_: Int, bw: Fl
     for i in range(len(an.fns)):
         if sel[i] and an.raw[i] > 0:
             print("fn " + lpad(pct(an.raw[i], raw), 6) + "  " + an.fns[i])
-    var keys = List[UInt128]()  # 128 bits: a row past 2^39 cycles overflowed a 64-bit key and sorted last
-    for r in range(len(an.ins)):
-        if sel[an.ins[r].func] and an.ins[r].cyc > 0:
-            keys.append(rank(an.ins[r].cyc, r))
-    sort(keys)
     print(lpad("addr", 8) + lpad("cyc%", 7) + lpad("cycles", 13) + lpad("mem", 12) + lpad("fe", 10) + lpad("br", 10) + "  " + rpad("cause", 7) + "instruction")
-    for i in range(min(top, len(keys))):
-        var ri = unrank(keys[len(keys) - 1 - i])
+    for ri in hot(an, sel, top):
         ref r = an.ins[ri]
         var text = String(r.text[byte = 0 : min(60, r.text.byte_length())])
         print(lpad(hexs(r.addr), 8) + lpad(pct(r.cyc, total), 7) + lpad(String(r.cyc), 13) + lpad(String(r.mem), 12) + lpad(String(r.fe), 10) + lpad(String(r.br), 10) + "  " + rpad(cname(cause_of(an, ri)), 7) + text)
     if an.unmapped > 0:
         print("WARN", an.unmapped, "cycles of samples matched no instruction in objdump.txt")
+
+
+def gui(an: Analysis, path: String, func: String, top: Int, hashes: Int) raises:
+    """The show tables in an imkit window: the run line and energy, the cause shares as bars, the hottest rows. Close to exit."""
+    var sel = select(an, func)
+    var by_cause = cause_cycles(an, sel)
+    var total = by_cause[NC]
+    if total == 0:
+        fail("show", "no samples in the selected functions" + (" (--fn " + func + ")" if func.byte_length() > 0 else String("")))
+    # every string is built here: the frame loop allocates nothing between begin() and finish()
+    var head = List[String]()
+    head.append(summary(an))
+    var el = energy_line(an, hashes)
+    if el.byte_length() > 0:
+        head.append(el)
+    var names = List[String]()
+    var shares = List[String]()
+    for c in range(NC):
+        names.append(cname(c))
+        shares.append(pct(by_cause[c], total))
+    var cells = List[String]()  # per hot row: addr, cyc%, cycles, cause, instruction
+    var cause = List[Int]()
+    for ri in hot(an, sel, top):
+        ref r = an.ins[ri]
+        var ci = cause_of(an, ri)
+        cells.append(hexs(r.addr))
+        cells.append(pct(r.cyc, total))
+        cells.append(String(r.cyc))
+        cells.append(cname(ci))
+        cells.append(String(r.text[byte=0:min(60, r.text.byte_length())]))
+        cause.append(ci)
+    var u = Ui(Font(getenv("IMKIT_FONT", "/usr/share/fonts/TTF/Roboto-Medium.ttf"), [13, 16, 22]))
+    u.set_theme(amarbaro())
+    var ctx = DeviceContext()
+    var layer = Layer(ctx, u)
+    var win = Window("corewait " + path, UW, UH, UW, UH)
+    var bg = List[UInt32](length=UW * UH, fill=u.theme.panel)
+    var colors = List[UInt32]()  # by cause: mem, fe, dep, branch, busy
+    for c in [u.theme.warn, u.theme.accent, u.theme.bad, u.theme.good, u.theme.muted]:
+        colors.append(c)
+    var bw = Float32(HALF - 56 - 70)  # bar: label 64, percent after it
+    var cx = Float32(HALF + 24)
+    while True:
+        var inp = win.poll()
+        if inp.quit:
+            break
+        u.begin(inp)
+        u.panel(16, 16, FW - 16, 128, "corewait show")
+        for i in range(len(head)):
+            _ = u.text(32, Float32(56 + 22 * i), head[i], 0, u.theme.text)
+        u.panel(16, 144, FHALF - 8, FH - 16, "cause share")
+        for c in range(NC):
+            var y0 = u.y
+            u.bar(names[c], Float32(by_cause[c]) / Float32(total), colors[c], bw)
+            _ = u.text(u.x + bw + 8, y0, shares[c], 0, u.theme.text)
+        u.panel(FHALF + 8, 144, FW - 16, FH - 16, "hottest rows")
+        _ = u.text(cx, 184, "addr", 0, u.theme.muted)
+        _ = u.text(cx + 80, 184, "cyc%", 0, u.theme.muted)
+        _ = u.text(cx + 150, 184, "cycles", 0, u.theme.muted)
+        _ = u.text(cx + 260, 184, "cause", 0, u.theme.muted)
+        _ = u.text(cx + 340, 184, "instruction", 0, u.theme.muted)
+        for i in range(min(len(cause), 22)):  # 22 rows fit the panel
+            var y = 206 + 22 * Float32(i)
+            _ = u.text(cx, y, cells[5 * i], 0, u.theme.text)
+            _ = u.text(cx + 80, y, cells[5 * i + 1], 0, u.theme.text)
+            _ = u.text(cx + 150, y, cells[5 * i + 2], 0, u.theme.text)
+            _ = u.text(cx + 260, y, cells[5 * i + 3], 0, colors[cause[i]])
+            _ = u.text(cx + 340, y, cells[5 * i + 4], 0, u.theme.text)
+        u.finish()
+        layer.render(u)
+        win.present(Int(bg.unsafe_ptr()), Int(layer.pixels.unsafe_ptr()))
 
 
 def key(text: String) -> String:
@@ -841,6 +931,7 @@ def main() raises:
     var bw = 0.0
     var hashes = 0
     var func = String("")
+    var gui_on = False
     var pos = List[String]()
     var i = 2
     while i < len(args):
@@ -876,12 +967,17 @@ def main() raises:
             i += 1
         elif args[i] == "--causes":
             causes = True
+        elif args[i] == "--gui":
+            gui_on = True
         else:
             pos.append(String(args[i]))
         i += 1
     var cmd = String(args[1]) if len(args) > 1 else String("")
     if cmd == "show" and len(pos) >= 1:
-        show(analyze(pos[0], k), func, top, causes, bytes_, bw, hashes)
+        if gui_on:
+            gui(analyze(pos[0], k), pos[0], func, top, hashes)
+        else:
+            show(analyze(pos[0], k), func, top, causes, bytes_, bw, hashes)
     elif cmd == "diff" and len(pos) >= 2:
         diff(analyze(pos[0], k), analyze(pos[1], k), top)
     elif cmd == "budget" and len(pos) == 2:

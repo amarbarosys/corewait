@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 fail() { echo "FAIL $1: $2"; exit 1; }
 mkdir -p build .work
 mb() {  # mojo build opens the GPU even for CPU code
-    $GW mojo build "$1" -o "$2" > "$2.log" 2>&1 \
+    $GW mojo build -I ../mojo-imkit/src "$1" -o "$2" > "$2.log" 2>&1 \
         || fail "build $2" "$(grep -m3 error "$2.log") (log $2.log)"
 }
 if [ -n "${CW_NO_RECORD:-}" ]; then mb src/corewait.mojo build/corewait-an; echo "ok 1 build (analyzer only)"

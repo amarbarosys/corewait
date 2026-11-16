@@ -295,7 +295,7 @@ an() {
     local b="$here/build/corewait-an" s="$here/src/corewait.mojo"
     if [ ! -x "$b" ] || [ "$s" -nt "$b" ]; then
         mkdir -p "$here/build"
-        (cd "$here" && $GW pixi run mojo build "$s" -o "$b") > "$b.log" 2>&1 || fail build "analyzer: $(grep -m3 error "$b.log") (log $b.log)"
+        (cd "$here" && $GW pixi run mojo build -I ../mojo-imkit/src "$s" -o "$b") > "$b.log" 2>&1 || fail build "analyzer: $(grep -m3 error "$b.log") (log $b.log)"
     fi
     exec "$b" "$@"
 }
