@@ -49,6 +49,14 @@ An `objdump.txt` is read in 8 MB chunks and an instruction line is cut to 4096 b
 mangled symbol, so a Mojo kernel's file holds 1.4 MB lines (the kinestride `smooth` recording: 1.1 GB, 14,601 lines). `diff` of two
 of them: 4.5 s and 59 MB, was 36 s and 5.7 GB and then a refusal.
 
+Mojo binaries work with no fix. On Gonzales `build-amd/gonzales` (72 MB text) the CPU phases of the bathroom scene
+(`--gpu --spp 1 --resolution 64x64`, measured 2026-11-16) resolve to named functions, and two records agree on the top 5:
+`bvh::_bvh_split` 50.2 % and 54.0 %, `host_textures::_load_host_texture` 27.8 % and 25.0 %, then `build_bvh2_node`,
+`pbrt_parser::finalize_scene`, `__init__::main` (merged: 52.0 % and 26.5 %). `record` took 3.8 s at 566 MB peak RSS (21 MB
+objdump), `show` 0.19 s at 70 MB, `merge` 2.3 s at 55 MB. `show --top N` prints the `fn` table and the instruction rows;
+`--causes` prints only the cause table. Under `gpu-wait` pass the full path of ROCm tools (`/opt/rocm/bin` is not on the
+job's PATH) and `--mem 8`.
+
 ## Docs
 
 - [`docs/api.md`](docs/api.md): every subcommand and flag, exit codes, output files, environment variables.
