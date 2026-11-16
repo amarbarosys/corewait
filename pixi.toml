@@ -9,4 +9,5 @@ check = "CW_NO_RECORD=1 ./check.sh"
 [dependencies]
 mojo = "==1.2.0"
 python = "3.13.*"
+max = "==26.7.0"
 
