@@ -288,6 +288,12 @@ attached() {
     esac
 }
 
+# A GPU program's host thread waiting in libhsa-runtime's signal-wait loop shows up under a stripped library's nearest
+# export (hsa_amd_image_get_info_max_dim on ROCm 7.2): name it, so the profile is not read as CPU-bound launch work.
+gpu_wait_note() {
+    [ -s "$1/dsos.tsv" ] || return 0
+    gawk -F'\t' '$3 ~ /libhsa-runtime/ && $1 + 0 >= 40 { printf "note: %.1f%% of cycles in libhsa-runtime (HSA signal-wait spin): the host waits on the GPU; launch-bound work shows in libamdhip64 instead\n", $1 }' "$1/dsos.tsv"
+}
 # objdump.txt is written by record; a BINARY argument regenerates a missing one
 prep() { [ -s "$1/objdump.txt" ] || { [ -f "${2:-}" ] && objdump_of "$2" "$1"; } || true; }
 # the analyzer, rebuilt when it is missing or older than its source
@@ -308,7 +314,7 @@ case "$cmd" in
     pick)   pick "$@" ;;
     build)  build "$@" ;;
     stat)   read -r kind _ <<<"$(dev_row "$1")"; stat_tsv "$1" "$2" "$([ "$kind" = perf ] && echo 3 || echo 2)" ;;   # OUT/stat.tsv again from OUT/stat.raw
-    show)   prep "$1" "${2:-}"; an show "$@" ;;
+    show)   prep "$1" "${2:-}"; gpu_wait_note "$1"; an show "$@" ;;
     diff)   prep "$1" "${3:-}"; prep "${2:-}" "${4:-}"; an diff "$@" ;;
     budget) an budget "$@" ;;
     *) fail usage "corewait record|pick|show|diff|budget|merge|stat|bw|build|attached ..." ;;
