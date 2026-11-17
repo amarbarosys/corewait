@@ -7,15 +7,19 @@
 Per-instruction CPU stall profiler for desktop, laptop and phones: hardware-counter samples joined to the disassembly,
 with a cause on every row. Devices and counters: `docs/DEVICES.md`.
 
+![corewait show --gui on the pointer-chase fixture: run line, cause shares, hottest rows](docs/img/gui.png)
+
 ```
 corewait build DEV                            build/cwprobe-DEV: the probe cross-compiled for the device (no Mojo runtime on it)
 corewait record DEV OUT [--dso LIB|auto] [--no-stat] [--pid PID] -- [K=V ...] BINARY [ARGS...]   samples.tsv + stat.tsv + objdump.txt + meta.txt in OUT
                                               --dso: report one loaded library of a host process such as python (auto, or a script BINARY: the one with the most cycles);
                                               dsos.tsv ranks all of them. --no-stat: no second run. --pid: sample a running server for as long as BINARY (`sleep 60`) runs
 corewait pick OUT LIB|auto                    report another library of OUT/perf.data without a new run
-corewait show OUT [--top N] [--causes] [--fn SYMBOL] [--k K] [--bytes B --bw GBPS]
+corewait show OUT [--top N] [--causes] [--fn SYMBOL] [--k K] [--bytes B --bw GBPS] [--gui]
                                               one row per instruction: cycles, mem/fe/br events, cause, text;
                                               --bytes/--bw add a speed-of-light line: achieved GB/s over the device bw (docs/DEVICES.md)
+                                              --gui: the same tables in a window (picture above), build/corewait-gui (imkit), built
+                                              only when mojo-imkit is checked out next to this repo; the CLI never needs it
 corewait diff OUT_A OUT_B [--top N]           per-row cycle delta, rows of same-named functions aligned by LCS on the text with register names masked, any size
                                               (O(nm) table up to 40M cells, then Hirschberg: memory linear in the rows; CW_ALIGN_CELLS moves the switch)
 corewait budget OUT FILE                      FILE lines "fn cause max-percent"; exit 1 on a breach (a CI gate for kernels)
