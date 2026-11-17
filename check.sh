@@ -3,19 +3,23 @@
 # Usage: ./check.sh        (CW_NO_RECORD=1: skip the probe build and record, for a machine without perf counters; capture: ./check.sh 2>&1 | tee .work/C-gate.txt; echo ${PIPESTATUS[0]})
 set -euo pipefail
 grepq() { local r=0; grep "$@" || r=$?; cat >/dev/null; return $r; }  # grep -q exits early; the writer would die of SIGPIPE under pipefail
-GW=""; command -v gpu-wait > /dev/null && GW="gpu-wait run --shared --vram 1 --timeout 600 --"
+# the daemon sets HSA_OVERRIDE_GFX_VERSION in every job; with it the GPU target comes out 'unknown' and the gui build fails
+GW=""; command -v gpu-wait > /dev/null && GW="gpu-wait run --shared --vram 1 --timeout 600 --mem 8 -- env -u HSA_OVERRIDE_GFX_VERSION"
 cd "$(dirname "$0")"
 fail() { echo "FAIL $1: $2"; exit 1; }
 mkdir -p build .work
-mb() {  # mojo build opens the GPU even for CPU code
-    $GW mojo build -I ../mojo-imkit/src "$1" -o "$2" > "$2.log" 2>&1 \
+mb() {  # mojo build opens the GPU even for CPU code; extra args go to mojo (the gui's -I)
+    $GW mojo build -I src "${@:3}" "$1" -o "$2" > "$2.log" 2>&1 \
         || fail "build $2" "$(grep -m3 error "$2.log") (log $2.log)"
 }
-if [ -n "${CW_NO_RECORD:-}" ]; then mb src/corewait.mojo build/corewait-an; echo "ok 1 build (analyzer only)"
+# --gui runs build/corewait-gui (imkit): built only when mojo-imkit is checked out next to the repo, the CLI never needs it
+mbg() { if [ -d ../mojo-imkit/src/imkit ]; then mb src/gui.mojo build/corewait-gui -I ../mojo-imkit/src; else echo "skip corewait-gui: no ../mojo-imkit"; fi; }
+if [ -n "${CW_NO_RECORD:-}" ]; then mb src/corewait.mojo build/corewait-an; mbg; echo "ok 1 build (analyzer only)"
 else
 ./corewait build desktop &
 mb src/corewait.mojo build/corewait-an &
-wait -n && wait -n || fail build "see build/*.log"
+mbg &
+wait -n && wait -n && wait -n || fail build "see build/*.log"
 echo "ok 1 build"
 
 # 2. record: the chase probe's hottest cycles address lies in chase_k, and all four event roles and the stat file exist

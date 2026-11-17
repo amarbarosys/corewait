@@ -16,7 +16,8 @@ set -euo pipefail
 here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)  # resolve the iTools symlink: build/ and pixi.toml live in the repo
 fail() { echo "FAIL $1: $2" >&2; exit 1; }
 # mojo build opens the GPU even for CPU code: queue it behind gpu-wait when that is installed
-GW=""; command -v gpu-wait > /dev/null && GW="gpu-wait run --shared --vram 1 --timeout 600 --"
+# the daemon sets HSA_OVERRIDE_GFX_VERSION in every job; with it the GPU target comes out 'unknown' and the gui build fails
+GW=""; command -v gpu-wait > /dev/null && GW="gpu-wait run --shared --vram 1 --timeout 600 --mem 8 -- env -u HSA_OVERRIDE_GFX_VERSION"
 # remote device targets (CW_LAPTOP_SSH, CW_XIAOMI_ADB, CW_XIAOMI_LOCK, CW_FLIP_ADB, CW_ONEPLUS_ADB) from the env or this file
 cfg=${CW_DEVICES:-$HOME/.config/corewait/devices.env}; [ -f "$cfg" ] && . "$cfg"
 
@@ -296,12 +297,15 @@ gpu_wait_note() {
 }
 # objdump.txt is written by record; a BINARY argument regenerates a missing one
 prep() { [ -s "$1/objdump.txt" ] || { [ -f "${2:-}" ] && objdump_of "$2" "$1"; } || true; }
-# the analyzer, rebuilt when it is missing or older than its source
+# the analyzer, rebuilt when it is missing or older than its source; with --gui also the window (imkit next to the repo)
 an() {
-    local b="$here/build/corewait-an" s="$here/src/corewait.mojo"
+    local b="$here/build/corewait-an" s="$here/src/corewait.mojo" g="$here/build/corewait-gui"
     if [ ! -x "$b" ] || [ "$s" -nt "$b" ]; then
         mkdir -p "$here/build"
-        (cd "$here" && $GW pixi run mojo build -I ../mojo-imkit/src "$s" -o "$b") > "$b.log" 2>&1 || fail build "analyzer: $(grep -m3 error "$b.log") (log $b.log)"
+        (cd "$here" && $GW pixi run mojo build "$s" -o "$b") > "$b.log" 2>&1 || fail build "analyzer: $(grep -m3 error "$b.log") (log $b.log)"
+    fi
+    if [[ " $* " == *" --gui "* ]] && [ -d "$here/../mojo-imkit/src/imkit" ] && { [ ! -x "$g" ] || [ "$s" -nt "$g" ] || [ "$here/src/gui.mojo" -nt "$g" ]; }; then
+        (cd "$here" && $GW pixi run mojo build -I src -I ../mojo-imkit/src src/gui.mojo -o "$g") > "$g.log" 2>&1 || fail build "gui: $(grep -m3 error "$g.log") (log $g.log)"
     fi
     exec "$b" "$@"
 }

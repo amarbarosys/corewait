@@ -1,5 +1,5 @@
 # corewait show OUT [--top N] [--causes] [--fn SYMBOL] [--k K] [--bytes B --bw GBPS] [--gui]   diff OUT_A OUT_B [--top N]   budget OUT FILE
-#   --gui: the same tables in an imkit window (needs a GPU and -I ../mojo-imkit/src at build); close the window to exit.
+#   --gui: the same tables in an imkit window: starts build/corewait-gui (src/gui.mojo), built only next to mojo-imkit.
 # Joins OUT/samples.tsv to OUT/objdump.txt by address: one row per instruction, with a cause on each row.
 #   skid rule: a sample lands up to K instructions after its cause, so the cycles and memory (or branch-miss) events of a
 #   row go to the nearest preceding load (branch) in the same function; --k 0 turns the rule off.
@@ -7,21 +7,11 @@
 #   the 3 rows before it wrote), fe (front-end event), busy (the rest).
 from std.collections import Dict
 from std.os import getenv, stat
-from std.os.path import exists
+from std.os.path import dirname, exists
 from std.sys import argv, exit
-from max.gpu.host import DeviceContext
-from imkit.draw import UW, UH
-from imkit.font import Font
-from imkit.layer import Layer
-from imkit.theme import amarbaro
-from imkit.ui import Ui
-from imkit.window import Window
+from std.ffi import external_call
 
 comptime NC = 5
-comptime HALF = UW // 2
-comptime FW = Float32(UW)
-comptime FH = Float32(UH)
-comptime FHALF = Float32(HALF)
 comptime MIN_SAMPLES = 10  # fewer samples of an event on a row are noise: no cause, no skid
 comptime ROW_CAP = 4096  # an instruction line is kept to its first bytes: a branch row names its target's whole mangled symbol (1.4 MB each)
 comptime ALIGN_CELLS = 40000000  # diff: a function pair above this many cells is aligned in linear memory (CW_ALIGN_CELLS overrides)
@@ -565,77 +555,6 @@ def show(an: Analysis, func: String, top: Int, causes: Bool, bytes_: Int, bw: Fl
         print("WARN", an.unmapped, "cycles of samples matched no instruction in objdump.txt")
 
 
-def gui(an: Analysis, path: String, func: String, top: Int, hashes: Int) raises:
-    """The show tables in an imkit window: the run line and energy, the cause shares as bars, the hottest rows. Close to exit."""
-    var sel = select(an, func)
-    var by_cause = cause_cycles(an, sel)
-    var total = by_cause[NC]
-    if total == 0:
-        fail("show", "no samples in the selected functions" + (" (--fn " + func + ")" if func.byte_length() > 0 else String("")))
-    # every string is built here: the frame loop allocates nothing between begin() and finish()
-    var head = List[String]()
-    head.append(summary(an))
-    var el = energy_line(an, hashes)
-    if el.byte_length() > 0:
-        head.append(el)
-    var names = List[String]()
-    var shares = List[String]()
-    for c in range(NC):
-        names.append(cname(c))
-        shares.append(pct(by_cause[c], total))
-    var cells = List[String]()  # per hot row: addr, cyc%, cycles, cause, instruction
-    var cause = List[Int]()
-    for ri in hot(an, sel, top):
-        ref r = an.ins[ri]
-        var ci = cause_of(an, ri)
-        cells.append(hexs(r.addr))
-        cells.append(pct(r.cyc, total))
-        cells.append(String(r.cyc))
-        cells.append(cname(ci))
-        cells.append(String(r.text[byte=0:min(60, r.text.byte_length())]))
-        cause.append(ci)
-    var u = Ui(Font(getenv("IMKIT_FONT", "/usr/share/fonts/TTF/Roboto-Medium.ttf"), [13, 16, 22]))
-    u.set_theme(amarbaro())
-    var ctx = DeviceContext()
-    var layer = Layer(ctx, u)
-    var win = Window("corewait " + path, UW, UH, UW, UH, app_id="corewait")
-    var bg = List[UInt32](length=UW * UH, fill=u.theme.panel)
-    var colors = List[UInt32]()  # by cause: mem, fe, dep, branch, busy
-    for c in [u.theme.warn, u.theme.accent, u.theme.bad, u.theme.good, u.theme.muted]:
-        colors.append(c)
-    var bw = Float32(HALF - 56 - 70)  # bar: label 64, percent after it
-    var cx = Float32(HALF + 24)
-    while True:
-        var inp = win.poll()
-        if inp.quit:
-            break
-        u.begin(inp)
-        u.panel(16, 16, FW - 16, 128, "corewait show")
-        for i in range(len(head)):
-            _ = u.text(32, Float32(56 + 22 * i), head[i], 0, u.theme.text)
-        u.panel(16, 144, FHALF - 8, FH - 16, "cause share")
-        for c in range(NC):
-            var y0 = u.y
-            u.bar(names[c], Float32(by_cause[c]) / Float32(total), colors[c], bw)
-            _ = u.text(u.x + bw + 8, y0, shares[c], 0, u.theme.text)
-        u.panel(FHALF + 8, 144, FW - 16, FH - 16, "hottest rows")
-        _ = u.text(cx, 184, "addr", 0, u.theme.muted)
-        _ = u.text(cx + 80, 184, "cyc%", 0, u.theme.muted)
-        _ = u.text(cx + 150, 184, "cycles", 0, u.theme.muted)
-        _ = u.text(cx + 260, 184, "cause", 0, u.theme.muted)
-        _ = u.text(cx + 340, 184, "instruction", 0, u.theme.muted)
-        for i in range(min(len(cause), 22)):  # 22 rows fit the panel
-            var y = 206 + 22 * Float32(i)
-            _ = u.text(cx, y, cells[5 * i], 0, u.theme.text)
-            _ = u.text(cx + 80, y, cells[5 * i + 1], 0, u.theme.text)
-            _ = u.text(cx + 150, y, cells[5 * i + 2], 0, u.theme.text)
-            _ = u.text(cx + 260, y, cells[5 * i + 3], 0, colors[cause[i]])
-            _ = u.text(cx + 340, y, cells[5 * i + 4], 0, u.theme.text)
-        u.finish()
-        layer.render(u)
-        win.present(Int(bg.unsafe_ptr()), Int(layer.pixels.unsafe_ptr()))
-
-
 def key(text: String) -> String:
     """An instruction without its addresses, so two builds of one kernel align."""
     var sp = text.find(" ")
@@ -922,65 +841,85 @@ def budget(an: Analysis, path: String) raises:
         exit(1)
 
 
-def main() raises:
+@fieldwise_init
+struct Opts(Movable):
+    var cmd: String
+    var pos: List[String]
+    var top: Int
+    var k: Int
+    var causes: Bool
+    var bytes_: Int
+    var bw: Float64
+    var hashes: Int
+    var func: String
+    var gui: Bool
+
+
+def parse() raises -> Opts:
+    """The command line of corewait, and of corewait-gui, which takes the same one."""
     var args = argv()
-    var top = 20
-    var k = 4
-    var causes = False
-    var bytes_ = 0
-    var bw = 0.0
-    var hashes = 0
-    var func = String("")
-    var gui_on = False
-    var pos = List[String]()
+    var o = Opts(String(args[1]) if len(args) > 1 else String(""), List[String](), 20, 4, False, 0, 0.0, 0, String(""), False)
     var i = 2
     while i < len(args):
-        if args[i] == "--top":
+        var a = String(args[i])
+        if a in ["--top", "--k", "--fn", "--bytes", "--bw", "--hashes"]:
             if i + 1 >= len(args):
-                fail("usage", "--top needs a value")
-            top = Int(String(args[i + 1]))
+                fail("usage", a + " needs a value")
+            var v = String(args[i + 1])
             i += 1
-        elif args[i] == "--k":
-            if i + 1 >= len(args):
-                fail("usage", "--k needs a value")
-            k = Int(String(args[i + 1]))
-            i += 1
-        elif args[i] == "--fn":
-            if i + 1 >= len(args):
-                fail("usage", "--fn needs a value")
-            func = String(args[i + 1])
-            i += 1
-        elif args[i] == "--bytes":
-            if i + 1 >= len(args):
-                fail("usage", "--bytes needs a value")
-            bytes_ = Int(String(args[i + 1]))
-            i += 1
-        elif args[i] == "--bw":
-            if i + 1 >= len(args):
-                fail("usage", "--bw needs a value")
-            bw = Float64(String(args[i + 1]))
-            i += 1
-        elif args[i] == "--hashes":
-            if i + 1 >= len(args):
-                fail("usage", "--hashes needs a value")
-            hashes = Int(String(args[i + 1]))
-            i += 1
-        elif args[i] == "--causes":
-            causes = True
-        elif args[i] == "--gui":
-            gui_on = True
+            if a == "--top":
+                o.top = Int(v)
+            elif a == "--k":
+                o.k = Int(v)
+            elif a == "--fn":
+                o.func = v
+            elif a == "--bytes":
+                o.bytes_ = Int(v)
+            elif a == "--bw":
+                o.bw = Float64(v)
+            else:
+                o.hashes = Int(v)
+        elif a == "--causes":
+            o.causes = True
+        elif a == "--gui":
+            o.gui = True
         else:
-            pos.append(String(args[i]))
+            o.pos.append(a)
         i += 1
-    var cmd = String(args[1]) if len(args) > 1 else String("")
-    if cmd == "show" and len(pos) >= 1:
-        if gui_on:
-            gui(analyze(pos[0], k), pos[0], func, top, hashes)
-        else:
-            show(analyze(pos[0], k), func, top, causes, bytes_, bw, hashes)
-    elif cmd == "diff" and len(pos) >= 2:
-        diff(analyze(pos[0], k), analyze(pos[1], k), top)
-    elif cmd == "budget" and len(pos) == 2:
-        budget(analyze(pos[0], k), pos[1])
+    return o^
+
+
+def gui_handoff() raises:
+    """--gui: the same command line in corewait-gui (src/gui.mojo, imkit), built only when mojo-imkit is next to the repo."""
+    var args = argv()
+    var d = String(dirname(String(args[0])))
+    var bin = (d + "/" if d.byte_length() > 0 else String("")) + "corewait-gui"  # next to build/corewait-an, else on PATH
+    # one buffer holds every argument, the pointers are taken once it stops growing (std Process.run's argv dangles)
+    var data = List[UInt8]()
+    var offs = List[Int]()
+    for i in range(len(args)):
+        offs.append(len(data))
+        data.extend((bin if i == 0 else String(args[i])).as_bytes())
+        data.append(0)
+    var ptrs = List[Int]()
+    for o in offs:
+        ptrs.append(Int(data.unsafe_ptr()) + o)
+    ptrs.append(0)
+    _ = external_call["execvp", Int32](Int(data.unsafe_ptr()), Int(ptrs.unsafe_ptr()))
+    _ = data^  # the Int addresses do not keep the buffers alive: hold them past the call
+    _ = ptrs^
+    fail("gui", "cannot start " + bin + " (check.sh builds it when ../mojo-imkit exists)")
+
+
+def main() raises:
+    var o = parse()
+    if o.gui:
+        gui_handoff()
+    elif o.cmd == "show" and len(o.pos) >= 1:
+        show(analyze(o.pos[0], o.k), o.func, o.top, o.causes, o.bytes_, o.bw, o.hashes)
+    elif o.cmd == "diff" and len(o.pos) >= 2:
+        diff(analyze(o.pos[0], o.k), analyze(o.pos[1], o.k), o.top)
+    elif o.cmd == "budget" and len(o.pos) == 2:
+        budget(analyze(o.pos[0], o.k), o.pos[1])
     else:
         fail("usage", "corewait show OUT [--top N] [--causes] [--fn SYMBOL] [--k K] | diff OUT_A OUT_B [--top N] | budget OUT FILE")
