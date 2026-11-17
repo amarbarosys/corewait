@@ -52,6 +52,8 @@ again, `diff`, then write a budget file for CI.
 
 ## Gotchas
 
+- `show OUT --gui` draws the same tables in a window (needs a GPU and a display); it runs `build/corewait-gui`, which is built
+  only when `mojo-imkit` is checked out next to the repo. For an agent the text output is the interface, `--gui` is for people.
 - **Skid.** A sample lands a few instructions after the stall. corewait moves a row's cycles back to the
   nearest load (branch), up to `--k 4` rows. A hot `mov` after a load is the load's cost.
 - **Noise floor.** An event counts on a row only with at least 10 samples. `busy` on a 1 % row means too
