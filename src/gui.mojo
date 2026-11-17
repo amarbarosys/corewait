@@ -78,6 +78,7 @@ def gui(an: Analysis, path: String, func: String, top: Int, hashes: Int) raises:
             u.bar(names[c], Float32(by_cause[c]) / Float32(total), colors[c], bw)
             _ = u.text(u.x + bw + 8, y0, shares[c], 0, u.theme.text)
         u.panel(FHALF + 8, 144, FW - 16, FH - 16, "hottest rows")
+        u.clip(FHALF + 8, 144, FW - 24, FH - 16)  # a branch row names a long symbol (364 px vs 252): cut 8 px inside the border
         _ = u.text(cx, 184, "addr", 0, u.theme.muted)
         _ = u.text(cx + 80, 184, "cyc%", 0, u.theme.muted)
         _ = u.text(cx + 150, 184, "cycles", 0, u.theme.muted)
@@ -90,6 +91,7 @@ def gui(an: Analysis, path: String, func: String, top: Int, hashes: Int) raises:
             _ = u.text(cx + 150, y, cells[5 * i + 2], 0, u.theme.text)
             _ = u.text(cx + 260, y, cells[5 * i + 3], 0, colors[cause[i]])
             _ = u.text(cx + 340, y, cells[5 * i + 4], 0, u.theme.text)
+        u.unclip()
         u.finish()
         layer.render(u)
         win.present(Int(bg.unsafe_ptr()), Int(layer.pixels.unsafe_ptr()))
